@@ -1,7 +1,7 @@
 version: "3.7"
 
 services:
-  # Umbrel 대시보드에서 앱 아이콘 클릭 시 여는 용도 (선택사항, 없어도 8080 포트는 동작)
+  # Umbrel 대시보드에서 앱 아이콘 클릭 시 여는 용도
   app_proxy:
     environment:
       APP_HOST: web
@@ -11,10 +11,7 @@ services:
     image: ghcr.io/fetedays/http-file-server:latest
     restart: on-failure
     stop_grace_period: 1m
-    # Galaxy Home Mini 등 외부 기기가 인증 없이 바로 접근할 수 있도록
-    # Umbrel 프록시를 거치지 않고 8080 포트를 직접 호스트에 노출합니다.
-    ports:
-      - "8080:80"
+    # umbrel-app.yml의 port: 8080 설정을 Umbrel이 자동으로 연결해줍니다.
     environment:
       MEDIA_ROOT: /data/media
       CONFIG_DIR: /data/config
