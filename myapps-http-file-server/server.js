@@ -139,7 +139,6 @@ app.get("/_api/list", (req, res) => {
 
 function joinUrlPath(rel, name) {
   const parts = (rel ? rel.split("/") : []).concat(name).filter(Boolean);
-  return "/" + parts.map(encodeURIComponent).join("/");
   return "/" + parts.map((part) => encodeURIComponent(displayName(part))).join("/");
 }
 
@@ -153,6 +152,24 @@ app.get("/_ui", (req, res) => {
   res.type("html").send(HTML_PAGE);
 });
 
+function htmlEscape(value) {
+  return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;");
+}
+
+function directoryListing(absDir, rel) {
+  const entries = fs.readdirSync(absDir, { withFileTypes: true })
+    .filter((entry) => !entry.name.startsWith("."))
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  const links = entries.map((entry) => {
+    const href = entry.isDirectory()
+      ? joinUrlPath(rel, entry.name) + "/"
+      : joinUrlPath(rel, entry.name);
+    const label = entry.isDirectory() ? "📁 " + displayName(entry.name) + "/" : displayName(entry.name);
+    return `<li><a href="${htmlEscape(href)}">${htmlEscape(label)}</a></li>`;
+  }).join("\n");
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${htmlEscape(rel || "/")}</title></head><body><h1>${htmlEscape(rel || "/")}</h1><ul>${links}</ul></body></html>`;
+}
+
 // ---------- 실제 파일 서빙 (재생/다운로드/Range 지원) ----------
 
 app.get(/^\/(?!_api|_ui).*/, (req, res) => {
@@ -161,7 +178,6 @@ app.get(/^\/(?!_api|_ui).*/, (req, res) => {
 
   let abs;
   try {
-    abs = safeResolve(getShareRootAbs(), rel);
     const root = getShareRootAbs();
     abs = resolveUnicodePath(root, rel);
     if (!abs || !safeResolve(root, path.relative(root, abs))) throw new Error("invalid path");
@@ -173,8 +189,9 @@ app.get(/^\/(?!_api|_ui).*/, (req, res) => {
     if (err) return res.status(404).send("파일을 찾을 수 없습니다.");
 
     if (stat.isDirectory()) {
-      // 폴더 자체를 직접 열면 UI로 안내
-      return res.redirect("/_ui?p=" + encodeURIComponent(rel));
+      // Galaxy Home Music은 폴더 HTML의 href에서 오디오 목록을 읽습니다.
+      // 따라서 UI로 리다이렉트하지 않고 표준 디렉터리 목록을 반환합니다.
+      return res.type("html").send(directoryListing(abs, rel));
     }
 
     if (req.query.download !== undefined) {
