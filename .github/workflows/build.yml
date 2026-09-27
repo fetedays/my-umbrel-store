@@ -5,19 +5,21 @@ on:
     branches: [main]
     paths:
       - "myapps-http-file-server/**"
-  workflow_dispatch: {}
+  workflow_dispatch:
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+
     permissions:
       contents: read
       packages: write
+
     steps:
       - name: 저장소 체크아웃
         uses: actions/checkout@v4
 
-      - name: QEMU 설정 (여러 CPU 아키텍처 빌드용)
+      - name: QEMU 설정
         uses: docker/setup-qemu-action@v3
 
       - name: Buildx 설정
@@ -37,4 +39,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
+            ghcr.io/${{ github.repository_owner }}/http-file-server:1.0.1
             ghcr.io/${{ github.repository_owner }}/http-file-server:latest
