@@ -1,33 +1,27 @@
 version: "3.7"
 
 services:
-  # Umbrel 대시보드에서 앱 아이콘 클릭 시 여는 용도
   app_proxy:
     environment:
       APP_HOST: web
       APP_PORT: 80
 
   web:
-    image: ghcr.io/fetedays/http-file-server:latest
+    build: .
+    image: http-file-server:local
     restart: on-failure
     stop_grace_period: 1m
-    # umbrel-app.yml의 port: 8080 설정을 Umbrel이 자동으로 연결해줍니다.
+
     environment:
       MEDIA_ROOT: /data/media
       CONFIG_DIR: /data/config
+
     volumes:
-      # 앱 설정(선택한 공유 루트 등) 저장용 - 건드리지 않아도 됩니다.
       - ${APP_DATA_DIR}/config:/data/config
-
-      # 아래는 실제로 공개하고 싶은 폴더들입니다.
-      # 왼쪽(호스트 실제 경로)만 원하는 대로 바꿔서 원하는 만큼 추가하세요.
-      # 예) Umbrel 외장 드라이브: /mnt/data/... 또는 NAS를 호스트에 마운트한 경로
-
-      # 1) Umbrel 자체 데이터 폴더 내 media 폴더 (기본 예시, 그대로 둬도 됨)
       - ${APP_DATA_DIR}/media:/data/media/local
 
-      # 2) NAS를 이미 Umbrel 호스트(리눅스)에 마운트해 두었다면 그 경로를 아래처럼 추가
+      # NAS 예시
       # - /mnt/nas/music:/data/media/nas-music:ro
 
-      # 3) USB 외장하드 등 Umbrel 외장 스토리지 앱으로 마운트된 경로 예시
+      # USB 예시
       # - /media/umbrel/usb1:/data/media/usb1:ro
