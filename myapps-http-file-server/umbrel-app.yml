@@ -13,6 +13,7 @@ website: ""
 repo: ""
 support: ""
 port: 8080
+icon: https://raw.githubusercontent.com/fetedays/my-umbrel-store/main/myapps-http-file-server/icon.svg
 path: ""
 defaultUsername: ""
 defaultPassword: ""
