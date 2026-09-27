@@ -69,6 +69,24 @@ function displayName(name) {
   return name.normalize("NFC");
 }
 
+// URL은 완성형(NFC) 한글을 사용하지만, 디스크에는 자모 분리형(NFD)으로
+// 저장된 파일이 있을 수 있으므로 각 경로 요소를 실제 이름과 매칭합니다.
+function resolveUnicodePath(base, rel) {
+  const safeBase = path.normalize(base);
+  let current = safeBase;
+  for (const part of rel.split("/").filter(Boolean)) {
+    const exact = path.join(current, part);
+    if (fs.existsSync(exact)) {
+      current = exact;
+      continue;
+    }
+    const match = fs.readdirSync(current).find((name) => displayName(name) === displayName(part));
+    if (!match) return null;
+    current = path.join(current, match);
+  }
+  return current;
+}
+
 // ---------- API: 공유 루트 설정 ----------
 
 app.get("/_api/settings", (req, res) => {
@@ -122,6 +140,7 @@ app.get("/_api/list", (req, res) => {
 function joinUrlPath(rel, name) {
   const parts = (rel ? rel.split("/") : []).concat(name).filter(Boolean);
   return "/" + parts.map(encodeURIComponent).join("/");
+  return "/" + parts.map((part) => encodeURIComponent(displayName(part))).join("/");
 }
 
 // ---------- 웹 UI ----------
@@ -143,6 +162,9 @@ app.get(/^\/(?!_api|_ui).*/, (req, res) => {
   let abs;
   try {
     abs = safeResolve(getShareRootAbs(), rel);
+    const root = getShareRootAbs();
+    abs = resolveUnicodePath(root, rel);
+    if (!abs || !safeResolve(root, path.relative(root, abs))) throw new Error("invalid path");
   } catch (e) {
     return res.status(400).send("잘못된 경로입니다.");
   }
