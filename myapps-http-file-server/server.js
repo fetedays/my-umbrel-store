@@ -215,9 +215,26 @@ app.get(/^\/(?!_api|_ui).*/, (req, res) => {
   const rel = decodedPath.replace(/^\/+/, "");
 
   let abs;
+  let effectiveRel = rel;
   try {
     const root = getShareRootAbs();
-    abs = resolveUnicodePath(root, rel);
+    abs = resolveUnicodePath(root, effectiveRel);
+    if (!abs) {
+      // Galaxy Home Mini 같은 기기가 공유 루트를 바꾸기 전의 옛 경로를 기억하고
+      // 있으면, 공유 루트 폴더 이름이 앞에 중복으로 붙어 요청되는 경우가 있습니다.
+      // (예: 루트를 downloads로 바꿨는데 기기가 여전히 /downloads/... 로 요청)
+      // 이 경우 그 중복된 접두어를 한 번 벗겨내고 다시 시도합니다.
+      const rootName = path.basename(root);
+      const parts = effectiveRel.split("/").filter(Boolean);
+      if (parts[0] === rootName) {
+        const strippedRel = parts.slice(1).join("/");
+        const strippedAbs = resolveUnicodePath(root, strippedRel);
+        if (strippedAbs) {
+          abs = strippedAbs;
+          effectiveRel = strippedRel;
+        }
+      }
+    }
     if (!abs || !safeResolve(root, path.relative(root, abs))) throw new Error("invalid path");
   } catch (e) {
     return res.status(400).send("잘못된 경로입니다.");
@@ -229,7 +246,7 @@ app.get(/^\/(?!_api|_ui).*/, (req, res) => {
     if (stat.isDirectory()) {
       // Galaxy Home Music은 폴더 HTML의 href에서 오디오 목록을 읽습니다.
       // 따라서 UI로 리다이렉트하지 않고 표준 디렉터리 목록을 반환합니다.
-      return res.type("html").send(directoryListing(abs, rel));
+      return res.type("html").send(directoryListing(abs, effectiveRel));
     }
 
     if (req.query.download !== undefined) {
