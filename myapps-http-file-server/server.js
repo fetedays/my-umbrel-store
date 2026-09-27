@@ -146,6 +146,12 @@ function joinUrlPath(rel, name) {
 
 app.get("/", (req, res) => {
   res.type("html").send(HTML_PAGE);
+  try {
+    const root = getShareRootAbs();
+    return res.type("html").send(directoryListing(root, ""));
+  } catch (e) {
+    return res.status(400).send("공유 루트가 설정되지 않았거나 폴더를 열 수 없습니다.");
+  }
 });
 
 app.get("/_ui", (req, res) => {
